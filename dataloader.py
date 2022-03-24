@@ -9,7 +9,7 @@ import glob
 
 
 # setting
-data_seg = 25    # 데이터를 몇개씩 가져올지
+data_seg = 50    # 데이터를 몇개씩 가져올지
 batch_size = 64  # 배치-사이즈
 
 

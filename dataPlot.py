@@ -1,4 +1,3 @@
-
 # Plot the confusion matrix
 import matplotlib.pyplot as plt
 import itertools
@@ -22,7 +21,7 @@ def plot_confusion_matrix(cm, classes, acc, loss, normalize=True, title='Confusi
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
 
-    fmt = '.2f' if normalize else 'd'
+    fmt = '.1f' if normalize else 'd'
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt), horizontalalignment='center',
@@ -33,5 +32,5 @@ def plot_confusion_matrix(cm, classes, acc, loss, normalize=True, title='Confusi
     plt.xlabel('Predicted label')
     # plt.show()
     c_t = datetime.now()
-    file_name = c_t.month+'_'+c_t.day+'_'+c_t.hour+'_'+c_t.Minute
+    file_name = str(c_t.month)+'_'+str(c_t.day)+'_'+str(c_t.hour)+'_'+str(c_t.minute)
     plt.savefig(os.getcwd() + '/Results/conf_'+file_name+'.png')

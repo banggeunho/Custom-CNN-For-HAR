@@ -162,6 +162,6 @@ plt.legend(loc='center left', bbox_to_anchor=(1.15, 0.5))
 # fig.tight_layout()
 plt.show()
 c_t = datetime.now()
-file_name = c_t.month+'_'+c_t.day+'_'+c_t.hour+'_'+c_t.Minute
+file_name = str(c_t.month)+'_'+str(c_t.day)+'_'+str(c_t.hour)+'_'+str(c_t.minute)
 plt.savefig(os.getcwd() + '/Results/train_'+file_name+'.png')
 plt.clf()

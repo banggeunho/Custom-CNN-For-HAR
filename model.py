@@ -2,23 +2,23 @@ import torch
 
 class CNN(torch.nn.Module):
     # [batch, channel, height, width]
-    # input[2, 1, 10, 6]
+    # input[50, 1, 50, 6]
     def __init__(self):
         super(CNN, self).__init__()
         self.keep_prob = 0.5
-        # L1 ImgIn shape=(?, 1, 10, 6)
-        #    Conv     -> (?, 32, 10, 6)
+        # L1 ImgIn shape=(?, 1, 50, 6)
+        #    Conv     -> (?, 32, 50, 6)
         self.layer1 = torch.nn.Sequential(
             torch.nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             torch.nn.ReLU())
-        # L2 ImgIn shape=(?, 32, 10, 6)
-        #    Conv      ->(?, 64, 10, 6)
+        # L2 ImgIn shape=(?, 32, 50, 6)
+        #    Conv      ->(?, 64, 50, 6)
         self.layer2 = torch.nn.Sequential(
             torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             torch.nn.ReLU())
-        # L3 ImgIn shape=(?, 64, 10, 6)
-        #    Conv      ->(?, 128, 10, 6)
-        #    Pool      ->(?, 128, 6, 4)
+        # L3 ImgIn shape=(?, 64, 50, 6)
+        #    Conv      ->(?, 128, 50, 6)
+        #    Pool      ->(?, 128, 26, 4)
         self.layer3 = torch.nn.Sequential(
             torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             torch.nn.ReLU(),
