@@ -1,8 +1,20 @@
 import os
-
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import matplotlib.pyplot as plt
+from datetime import datetime
+from scipy import signal
+
+
+'''
+    Convert Raw Data(.txt) to Clean Data(.csv) using Standard Scaler (Scikit Learn) and Resampling (Scypi) 
+    Heart Rate : 1Hz
+    Accelerometer, Gyroscope : 50Hz
+    Step Count : when value(step count) changed
+    Data Preprocessing.py
+    
+'''
 
 # 경로 안에 있는 모든 파일 읽어온다.
 # 여기 경로 수정해서 사용하세용~
@@ -26,16 +38,63 @@ def is_number(num):
         return False
 
 
+def plot6Valeus(df, level_len, seq):
+    data_type_name = ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ']
+    column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
+    plt.figure(seq, figsize=(15, 8))  # 먼저 창을 만들고
+    n = 1
+    # plt.suptitle(filename + '   level: ' + level, fontsize=15)
+    for i, data in enumerate(column_names):
+        ax = plt.subplot(2, 3, n)  # for문을 돌면서 Axes를 추가
+        plt.title("%s " % data_type_name[i], fontsize=15)
+        for k in level_len:
+            ax.axvline(k, 0.2, 0.8, color='lightgray', linestyle='--', linewidth=2)
+        ax.plot(df.index, df[data], "-", label=str(data), alpha=.6)  # 그래프 추가
+        plt.tick_params(width=0)
+        n += 1
+    plt.tight_layout()  # 창 크기에 맞게 조정
+
+
+
+def plotValuesWithLevels(df_list, levels, types):
+    # 가속도 그래프 가시화
+    plt.figure(figsize=(20, 10))
+    plt.suptitle(types, fontsize=15)
+    n = 1
+    if types == 'Accelerometers':
+        data_type_name = ['AX', 'AY', 'AZ']
+    else:
+        data_type_name = ['GX', 'GY', 'GZ']
+
+    for level in levels:
+        ax = plt.subplot(2, 7, n)
+        plt.title("level : %s " % str(level), fontsize=15)
+        for i, df in enumerate(df_list):
+            tempdf = df[df['level'] == level].copy()
+            tempdf.reset_index(drop=True, inplace=True)
+            print(tempdf)
+            ax.plot(tempdf.index, tempdf["value"], "-", label=data_type_name[i], alpha=.6)
+        plt.legend(fontsize=13)
+        plt.grid()
+        n += 1
+    plt.show()
+
+def scaling(scaler, df_list):
+    for i in df_list:
+        arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
+        arr = scaler.fit_transform(arr)
+        i.iloc[:, 1] = arr
+
 for filename in os.listdir(path):
 
-    heartR = pd.DataFrame(columns=['level', 'time', 'heartR'])
-    accelX = pd.DataFrame(columns=['level', 'time', 'accelX'])
-    accelY = pd.DataFrame(columns=['level', 'time', 'accelY'])
-    accelZ = pd.DataFrame(columns=['level', 'time', 'accelZ'])
-    gyroX = pd.DataFrame(columns=['level', 'time', 'gyroX'])
-    gyroY = pd.DataFrame(columns=['level', 'time', 'gyroY'])
-    gyroZ = pd.DataFrame(columns=['level', 'time', 'gyroZ'])
-    stepC = pd.DataFrame(columns=['level', 'time', 'stepC'])
+    heartR = pd.DataFrame(columns=['level', 'value'])
+    accelX = pd.DataFrame(columns=['level', 'value'])
+    accelY = pd.DataFrame(columns=['level', 'value'])
+    accelZ = pd.DataFrame(columns=['level', 'value'])
+    gyroX = pd.DataFrame(columns=['level', 'value'])
+    gyroY = pd.DataFrame(columns=['level', 'value'])
+    gyroZ = pd.DataFrame(columns=['level', 'value'])
+    stepC = pd.DataFrame(columns=['level', 'value'])
 
     with open(path+filename,  encoding='utf-8') as f:
         lines = f.read()
@@ -77,61 +136,124 @@ for filename in os.listdir(path):
 
         # temp = ['1', 'AX', '1643912264855', '-3.6631858']
         # Type = AX, AY, AZ, GX, GY, GZ, HR ,SC
-        if temp[1] == 'HR':
-            heartR.loc[len(heartR)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'AX':
-            accelX.loc[len(accelX)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'AY':
-            accelY.loc[len(accelY)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'AZ':
-            accelZ.loc[len(accelZ)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'GX':
-            gyroX.loc[len(gyroX)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'GY':
-            gyroY.loc[len(gyroY)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'GZ':
-            gyroZ.loc[len(gyroZ)] = [int(temp[0]), temp[2], float(temp[3])]
-        elif temp[1] == 'SC':
-            stepC.loc[len(stepC)] = [int(temp[0]), temp[2], float(temp[3])]
+        temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
 
-    # print(heartR,"\n", accelX, "\n", accelY, "\n", accelZ, "\n", gyroX, "\n", gyroY, "\n", gyroZ, "\n", stepC)
+        if temp[1] == 'HR':
+            heartR.loc[len(heartR)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'AX':
+            accelX.loc[len(accelX)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'AY':
+            accelY.loc[len(accelY)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'AZ':
+            accelZ.loc[len(accelZ)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'GX':
+            gyroX.loc[len(gyroX)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'GY':
+            gyroY.loc[len(gyroY)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'GZ':
+            gyroZ.loc[len(gyroZ)] = [int(temp[0]), float(temp[3])]
+        elif temp[1] == 'SC':
+            stepC.loc[len(stepC)] = [int(temp[0]), float(temp[3])]
+
+    # 레벨별 길이 구하기
+    level_num = [i for i in range(1, 14)]
+    level_len = []
+    temp = 0
+
+    # pd.set_option('display.max_row', 500)
 
     df_list = [accelX, accelY, accelZ, gyroX, gyroY, gyroZ]
-    # 시간 중복 데이터 뒤에 부분 제거
-    for i in df_list:
-        i.drop_duplicates(['time'], inplace=True, ignore_index=True)
+    level_df = [pd.DataFrame()]*14
+    re_level_df = [pd.DataFrame()]*14
+    original_df = pd.DataFrame()
+    final_df = pd.DataFrame()
+    column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
 
-    print(accelX.shape, accelY.shape, accelZ.shape, gyroX.shape, gyroY.shape, gyroZ.shape)
+    # Copy the original data and data removed outlier to new dataframe for scaling
+    std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
+    std_list = [std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ]
 
-    # 각 데이터의 value를 정규화해준다.
-    std_scaler = StandardScaler()
-    for i in df_list:
-        arr = np.array(i.iloc[:, 2]).reshape(-1, 1)
-        arr = std_scaler.fit_transform(arr)
-        i.iloc[:, 2] = arr
+    # Standard Scaling
+    scaling(StandardScaler(), std_list)
 
-    # 우리 레벨은 13까지 쓰므로
-    level_num = [i for i in range(1, 14)]
-    ## 각 데이터프레임들을 레벨별로 합쳐 주면서 ~ 각 폴더에 저장까지 해주면서~
-    # for문을 이용하여 plot 하기 위해 array로 묶어줍니다.
-    data_type = [accelY, accelZ, gyroX, gyroY, gyroZ]
-    temp_length = 0
+    # 레벨별로 데이터 나누기
+    for i in level_num:
+        for j in std_list:
+            temp_data = j[j['level'] == i]['value'].copy()
+            temp_data.reset_index(drop=True, inplace=True)
+            level_df[i] = pd.concat([level_df[i], temp_data], axis=1)
+
+    # 레벨별로 나뉜 데이터 리샘플링(down)하기
+    for i in level_num:
+        if len(level_df[i]) <= 0:
+            continue
+
+        min_column_cnt = int(1e9)
+        level_df[i].columns = column_names
+        for j in column_names:
+            if level_df[i][j].count() > 0:
+                min_column_cnt = min(level_df[i][j].count(), min_column_cnt)
+
+        # print(i,'//',min_column_cnt)
+
+        for j in column_names:
+            arr = np.array(level_df[i][j]).reshape(-1, 1)
+            arr = arr[np.logical_not(np.isnan(arr))]
+            f = signal.resample(arr, min_column_cnt)
+            re_level_df[i] = pd.concat([re_level_df[i], pd.DataFrame(f)], axis = 1)
+
+        re_level_df[i].columns = column_names
+        re_level_df[i]['level'] = [i for _ in range(len(re_level_df[i]))]
+
+        original_df = pd.concat([original_df, level_df[i]], axis=0)
+        final_df = pd.concat([final_df, re_level_df[i]], axis=0) # 최종 리샘플링된 데이터
+
+    original_df.reset_index(drop=True, inplace=True)
+    final_df.reset_index(drop=True, inplace=True)
+    # print(final_df)
+    print(accelX.shape, final_df.shape)
+
+    # plot6Valeus(final_df, level_len, 2)
+    # plt.show()
+
+    # # 리샘플링 잘 되었는지 확인
+    # for idx, (i, j) in enumerate(zip(column_names, std_list)):
+    #     plt.plot(j.index, j['value'], 'g-', final_df[i].index, final_df[i], 'b-')
+    #     plt.legend(['data', 'resampled'], loc='best')
+    #     plt.show()
+    # plt.clf()
+
+
+    # 레벨별로 나누어서 csv 파일로 데이터 저장
     for i in level_num: # 레벨별로 확인해서 쪼개겠습니다.
-        total_data = accelX[accelX['level'] == i] #첫 기준 데이터를 accelX로 지정해준다.
-        total_data.reset_index(drop=True, inplace=True)
-        for j in data_type: # 돌아가면서 merge 수행
-            temp = j[j['level'] == i] # 해당 레벨에 맞는 부분만 가져온다
-            temp.reset_index(drop=True, inplace=True) # 인덱스를 다시 설정해준다
-            total_data = pd.merge(total_data, temp, on=['level','time'], how='inner') # level과 time을 기준으로 inner join!
-        total_data.drop(['level', 'time'], axis=1, inplace=True) # 레벨과 시간 column 삭제
+        save_data = final_df[final_df['level'] == i].copy() #첫 기준 데이터를 accelX로 지정해준다.
+        save_data.reset_index(drop=True, inplace=True)
+        save_data.drop(['level'], axis=1, inplace=True) # 레벨 column 삭제
         # 정제된 데이터를 레벨별로 각 폴더에 저장!!
-        total_data.to_csv(current_path+"/output/"+str(i)+"/"+filename+"_"+str(i)+".csv", header=False, index=False)
-        length += len(total_data)
-        temp_length += len(total_data)
+        save_data.to_csv(current_path+"/output/"+str(i)+"/"+filename+"_"+str(i)+".csv", header=False, index=False)
+        length += len(save_data)
+
     complete_file_len += 1
-    print(temp_length)
-
-print(length)
+    print('Total lenghth of data : ', length)
 
 
 
+
+    # out_accelX, out_accelY, out_accelZ, out_gyroX, out_gyroY, out_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
+    # out_df_list = [out_accelX, out_accelY, out_accelZ, out_gyroX, out_gyroY, out_gyroZ]
+
+    # # Outlier 제거
+    # for i in out_df_list:
+    #     for j in level_num:
+    #         tempdf = i[i['level'] == j].copy()
+    #         q1 = tempdf['value'].quantile(0.25)
+    #         q3 = tempdf['value'].quantile(0.75)
+    #         iqr = q3 - q1
+    #         con1, con2 = tempdf['value'] > q3 + (1.5 * iqr), tempdf['value'] < q1 - (iqr * 1.5)
+    #         con1_idx, con2_idx = tempdf[con1].index, tempdf[con2].index
+    #         i.drop(con1_idx, inplace=True)
+    #         i.drop(con2_idx, inplace=True)
+    #     i.reset_index(drop=True, inplace=True)
+    #
+    # # Outlier 제거 후 Plot
+    # plot6Valeus(out_df_list, level_len, 2)
