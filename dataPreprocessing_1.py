@@ -2,19 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
-from datetime import datetime
 from scipy import signal
 
-
-'''
-    Convert Raw Data(.txt) to Clean Data(.csv) using Standard Scaler (Scikit Learn) and Resampling (Scypi) 
-    Heart Rate : 1Hz
-    Accelerometer, Gyroscope : 50Hz
-    Step Count : when value(step count) changed
-    Data Preprocessing.py
-    
-'''
 
 # 경로 안에 있는 모든 파일 읽어온다.
 # 여기 경로 수정해서 사용하세용~
@@ -37,48 +26,6 @@ def is_number(num):
     except ValueError:  # num을 float으로 변환할 수 없는 경우
         return False
 
-
-def plot6Valeus(df, level_len, seq):
-    data_type_name = ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ']
-    column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
-    plt.figure(seq, figsize=(15, 8))  # 먼저 창을 만들고
-    n = 1
-    # plt.suptitle(filename + '   level: ' + level, fontsize=15)
-    for i, data in enumerate(column_names):
-        ax = plt.subplot(2, 3, n)  # for문을 돌면서 Axes를 추가
-        plt.title("%s " % data_type_name[i], fontsize=15)
-        for k in level_len:
-            ax.axvline(k, 0.2, 0.8, color='lightgray', linestyle='--', linewidth=2)
-        ax.plot(df.index, df[data], "-", label=str(data), alpha=.6)  # 그래프 추가
-        plt.tick_params(width=0)
-        n += 1
-    plt.tight_layout()  # 창 크기에 맞게 조정
-
-
-
-def plotValuesWithLevels(df_list, levels, types):
-    # 가속도 그래프 가시화
-    plt.figure(figsize=(20, 10))
-    plt.suptitle(types, fontsize=15)
-    n = 1
-    if types == 'Accelerometers':
-        data_type_name = ['AX', 'AY', 'AZ']
-    else:
-        data_type_name = ['GX', 'GY', 'GZ']
-
-    for level in levels:
-        ax = plt.subplot(2, 7, n)
-        plt.title("level : %s " % str(level), fontsize=15)
-        for i, df in enumerate(df_list):
-            tempdf = df[df['level'] == level].copy()
-            tempdf.reset_index(drop=True, inplace=True)
-            print(tempdf)
-            ax.plot(tempdf.index, tempdf["value"], "-", label=data_type_name[i], alpha=.6)
-        plt.legend(fontsize=13)
-        plt.grid()
-        n += 1
-    plt.show()
-
 def scaling(scaler, df_list):
     for i in df_list:
         arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
@@ -96,8 +43,12 @@ for filename in os.listdir(path):
     gyroZ = pd.DataFrame(columns=['level', 'value'])
     stepC = pd.DataFrame(columns=['level', 'value'])
 
-    with open(path+filename,  encoding='utf-8') as f:
-        lines = f.read()
+    with open(path+filename) as f:
+        try:
+            lines = f.read()
+        except UnicodeDecodeError:
+            continue
+
         filename = filename[:-4]
         print(f'[{complete_file_len}/{file_len}, {complete_file_len/file_len * 100:.2f}%]{filename}')
         # 라인별로 ', '(콤마 공백) 로 나누기
@@ -121,6 +72,8 @@ for filename in os.listdir(path):
         if len(arr[-1]) < 22:
             arr.pop(-1)
 
+    if len(arr) < 300:
+        continue
 
     # 데이터 프레임에 데이터 추가 // 시간대에 맞게 각각의 값을 넣어줍니다
     # 각각의 데이터를 태그를 보고 식별한 후 데이터가 알맞게 들어오면 각각의 데이터 프레임에 넣어줍니다.
@@ -136,24 +89,27 @@ for filename in os.listdir(path):
 
         # temp = ['1', 'AX', '1643912264855', '-3.6631858']
         # Type = AX, AY, AZ, GX, GY, GZ, HR ,SC
-        temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
+        # temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
 
-        if temp[1] == 'HR':
+        if temp[1] == 'heartR':
             heartR.loc[len(heartR)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'AX':
+        elif temp[1] == 'accelX':
             accelX.loc[len(accelX)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'AY':
+        elif temp[1] == 'accelY':
             accelY.loc[len(accelY)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'AZ':
+        elif temp[1] == 'accelZ':
             accelZ.loc[len(accelZ)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'GX':
+        elif temp[1] == 'gyroX':
             gyroX.loc[len(gyroX)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'GY':
+        elif temp[1] == 'gyroY':
             gyroY.loc[len(gyroY)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'GZ':
+        elif temp[1] == 'gyroZ':
             gyroZ.loc[len(gyroZ)] = [int(temp[0]), float(temp[3])]
-        elif temp[1] == 'SC':
+        elif temp[1] == 'stepC':
             stepC.loc[len(stepC)] = [int(temp[0]), float(temp[3])]
+
+    # print(heartR,"\n", accelX, "\n", accelY, "\n", accelZ, "\n", gyroX, "\n", gyroY, "\n", gyroZ, "\n", stepC)
+
 
     # 레벨별 길이 구하기
     level_num = [i for i in range(1, 14)]
@@ -238,22 +194,3 @@ for filename in os.listdir(path):
 
 
 
-
-    # out_accelX, out_accelY, out_accelZ, out_gyroX, out_gyroY, out_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
-    # out_df_list = [out_accelX, out_accelY, out_accelZ, out_gyroX, out_gyroY, out_gyroZ]
-
-    # # Outlier 제거
-    # for i in out_df_list:
-    #     for j in level_num:
-    #         tempdf = i[i['level'] == j].copy()
-    #         q1 = tempdf['value'].quantile(0.25)
-    #         q3 = tempdf['value'].quantile(0.75)
-    #         iqr = q3 - q1
-    #         con1, con2 = tempdf['value'] > q3 + (1.5 * iqr), tempdf['value'] < q1 - (iqr * 1.5)
-    #         con1_idx, con2_idx = tempdf[con1].index, tempdf[con2].index
-    #         i.drop(con1_idx, inplace=True)
-    #         i.drop(con2_idx, inplace=True)
-    #     i.reset_index(drop=True, inplace=True)
-    #
-    # # Outlier 제거 후 Plot
-    # plot6Valeus(out_df_list, level_len, 2)
