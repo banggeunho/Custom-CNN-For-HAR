@@ -136,7 +136,6 @@ for filename in os.listdir(path):
 
         # temp = ['1', 'AX', '1643912264855', '-3.6631858']
         # Type = AX, AY, AZ, GX, GY, GZ, HR ,SC
-        temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
 
         if temp[1] == 'HR':
             heartR.loc[len(heartR)] = [int(temp[0]), float(temp[3])]

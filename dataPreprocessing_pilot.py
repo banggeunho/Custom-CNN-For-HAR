@@ -6,20 +6,24 @@ from scipy import signal
 import matplotlib.pyplot as plt
 from glob import glob
 
-# 경로 안에 있는 모든 파일 읽어온다.
-# 여기 경로 수정해서 사용하세용~
+# 폴더 경로
 path = './pilot_data/'
 current_path = os.getcwd()
 os.makedirs("./pilot_output/", exist_ok = True)
-# 폴더를 만들어줍니다.
+
+# 레벨별로 output
 for i in range(1, 11):
     os.makedirs(current_path + "/pilot_output/"+str(i), exist_ok = True)
 
 length = 0
-file_len = len(glob('./pilot_data/**', recursive=True))-11)
+file_len = len(glob('./pilot_data/**', recursive=True)-11)
 complete_file_len = 1
 
-# coding=utf-8
+''' 함수 구현
+is_number : 숫자인지 판별
+scaling : standard scaling
+plot6values : 데이터 플롯
+'''
 def is_number(num):
     try:
         float(num)
@@ -46,6 +50,12 @@ def plot6Valeus(df, seq, column_names):
         n += 1
     plt.tight_layout()  # 창 크기에 맞게 조정
 
+
+
+'''
+main 부분
+레벨별로 폴더에 접근해서 입력데이터로 바꿔주기
+'''
 for idx in range(1, 11):
     for filename in os.listdir(path+'/'+str(idx)+'/'):
 
@@ -82,7 +92,9 @@ for idx in range(1, 11):
         if len(arr) < 300:
             continue
 
+        # 비어있는 데이터프레임을 만들어준다.
         HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int)
+
         # 데이터 프레임에 데이터 추가 // 시간대에 맞게 각각의 값을 넣어줍니다
         # 각각의 데이터를 태그를 보고 식별한 후 데이터가 알맞게 들어오면 각각의 데이터 프레임에 넣어줍니다.
         for l in arr:
@@ -102,31 +114,20 @@ for idx in range(1, 11):
 
             if temp[0] == 'heartR':
                 HR = np.append(HR, np.array([[idx, float(temp[2])]]), axis = 0)
-                # heartR.loc[len(heartR)] = [idx, float(temp[2])]
             elif temp[0] == 'accelX':
                 AX = np.append(AX, np.array([[idx, float(temp[2])]]), axis = 0)
-                # accelX.loc[len(accelX)] = [idx, float(temp[2])]
             elif temp[0] == 'accelY':
                 AY = np.append(AY, np.array([[idx, float(temp[2])]]), axis = 0)
-                # accelY.loc[len(accelY)] = [idx, float(temp[2])]
             elif temp[0] == 'accelZ':
                 AZ = np.append(AZ, np.array([[idx, float(temp[2])]]), axis = 0)
-                # accelZ.loc[len(accelZ)] = [idx, float(temp[2])]
             elif temp[0] == 'gyroX':
                 GX = np.append(GX, np.array([[idx, float(temp[2])]]), axis = 0)
-                # gyroX.loc[len(gyroX)] = [idx, float(temp[2])]
             elif temp[0] == 'gyroY':
                 GY = np.append(GY, np.array([[idx, float(temp[2])]]), axis = 0)
-                # gyroY.loc[len(gyroY)] = [idx, float(temp[2])]
             elif temp[0] == 'gyroZ':
                 GZ = np.append(GZ, np.array([[idx, float(temp[2])]]), axis = 0)
-                # gyroZ.loc[len(gyroZ)] = [idx, float(temp[2])]
             elif temp[0] == 'stepC':
                 SC = np.append(SC, np.array([[idx, float(temp[2])]]), axis = 0)
-                # stepC.loc[len(stepC)] = [idx, float(temp[2])]
-
-        # print(heartR,"\n", accelX, "\n", accelY, "\n", accelZ, "\n", gyroX, "\n", gyroY, "\n", gyroZ, "\n", stepC)
-        # pd.set_option('display.max_row', 500)
 
         print(HR.shape, AX.shape, AY.shape, AZ.shape, GX.shape, GY.shape, GZ.shape, SC.shape)
 
@@ -149,7 +150,7 @@ for idx in range(1, 11):
 
         column_names = ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ']
 
-        # Copy the original data and data removed outlier to new dataframe for scaling
+        # Copy the original data to new dataframe for scaling
         std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
         std_list = [std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ]
 
@@ -157,7 +158,6 @@ for idx in range(1, 11):
         scaling(StandardScaler(), std_list)
 
         # 레벨별로 데이터 나누기
-
         for j in std_list:
             temp_data = j['value'].copy()
             temp_data.reset_index(drop=True, inplace=True)
@@ -172,6 +172,7 @@ for idx in range(1, 11):
 
         # print(i,'//',min_column_cnt)
 
+        # 데이터 resampling한 후 final_df에 저장
         for i in column_names:
             arr = np.array(concat_df[i]).reshape(-1, 1)
             arr = arr[np.logical_not(np.isnan(arr))]
@@ -194,7 +195,7 @@ for idx in range(1, 11):
         #     plt.show()
         # plt.clf()
 
-        # 정제된 데이터를 레벨별로 각 폴더에 저장!!
+        # final_df의 데이터를 레벨별로 각 폴더에 저장!!
         final_df.to_csv("./pilot_output/"+str(idx)+"/"+filename+"_"+str(idx)+".csv", header=False, index=False)
         length += len(final_df)
         complete_file_len += 1

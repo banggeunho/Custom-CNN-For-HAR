@@ -12,7 +12,6 @@ import glob
 data_seg = 50    # 데이터를 몇개씩 가져올지
 batch_size = 64  # 배치-사이즈
 
-
 class CustomDataset(Dataset):
     def __init__(self, data_path, data_seg):
         self.data = []
@@ -85,5 +84,5 @@ print("Number of Test set : ", len(datasets['test']))
 dataloaders = {}
 dataloaders['train'] = DataLoader(datasets['train'], batch_size=batch_size, shuffle=True, drop_last=True)
 dataloaders['valid'] = DataLoader(datasets['valid'], batch_size=batch_size, shuffle=False, drop_last=True)
-dataloaders['test']  = DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, drop_last=True)
+dataloaders['test'] = DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, drop_last=True)
 

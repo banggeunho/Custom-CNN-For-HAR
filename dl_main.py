@@ -142,7 +142,6 @@ plot_confusion_matrix(cf_matrix, classes, test_acc, test_loss)
 ## 결과 그래프 그리기
 print('best model : %d - %1.f / %.1f' % (best_idx, valid_acc[best_idx], valid_loss[best_idx]))
 fig, ax1 = plt.subplots()
-
 ax1.plot(train_acc, 'b-', label='Train_acc')
 ax1.plot(valid_acc, 'r-', label='Valid_acc')
 plt.plot(best_idx, valid_acc[best_idx], 'ro')
