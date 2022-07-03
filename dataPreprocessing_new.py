@@ -2,34 +2,29 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
-from datetime import datetime
 from scipy import signal
+import matplotlib.pyplot as plt
+from glob import glob
 
-
-'''
-    Convert Raw Data(.txt) to Clean Data(.csv) using Standard Scaler (Scikit Learn) and Resampling (Scypi) 
-    Heart Rate : 1Hz
-    Accelerometer, Gyroscope : 50Hz
-    Step Count : when value(step count) changed
-    Data Preprocessing.py
-    
-'''
-
-# 경로 안에 있는 모든 파일 읽어온다.
-# 여기 경로 수정해서 사용하세용~
+# 폴더 경로
 path = './download/'
+save_path = './input_data/'
 current_path = os.getcwd()
+os.makedirs("./download_output/", exist_ok = True)
 
-# 폴더를 만들어줍니다.
+# 레벨별로 output
 for i in range(1, 14):
-    os.makedirs(current_path + "/output/"+str(i), exist_ok = True)
+    os.makedirs(save_path+str(i), exist_ok = True)
 
 length = 0
 file_len = len(os.listdir(path))
 complete_file_len = 1
 
-# coding=utf-8
+''' 함수 구현
+is_number : 숫자인지 판별
+scaling : standard scaling
+plot6values : 데이터 플롯
+'''
 def is_number(num):
     try:
         float(num)
@@ -37,18 +32,20 @@ def is_number(num):
     except ValueError:  # num을 float으로 변환할 수 없는 경우
         return False
 
+def scaling(scaler, df_list):
+    for i in df_list:
+        arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
+        arr = scaler.fit_transform(arr)
+        i.iloc[:, 1] = arr
 
-def plot6Valeus(df, level_len, seq):
+def plot6Valeus(df, seq, column_names):
     data_type_name = ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ']
-    column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
     plt.figure(seq, figsize=(15, 8))  # 먼저 창을 만들고
     n = 1
     # plt.suptitle(filename + '   level: ' + level, fontsize=15)
     for i, data in enumerate(column_names):
         ax = plt.subplot(2, 3, n)  # for문을 돌면서 Axes를 추가
         plt.title("%s " % data_type_name[i], fontsize=15)
-        for k in level_len:
-            ax.axvline(k, 0.2, 0.8, color='lightgray', linestyle='--', linewidth=2)
         ax.plot(df.index, df[data], "-", label=str(data), alpha=.6)  # 그래프 추가
         plt.tick_params(width=0)
         n += 1
@@ -56,48 +53,17 @@ def plot6Valeus(df, level_len, seq):
 
 
 
-def plotValuesWithLevels(df_list, levels, types):
-    # 가속도 그래프 가시화
-    plt.figure(figsize=(20, 10))
-    plt.suptitle(types, fontsize=15)
-    n = 1
-    if types == 'Accelerometers':
-        data_type_name = ['AX', 'AY', 'AZ']
-    else:
-        data_type_name = ['GX', 'GY', 'GZ']
-
-    for level in levels:
-        ax = plt.subplot(2, 7, n)
-        plt.title("level : %s " % str(level), fontsize=15)
-        for i, df in enumerate(df_list):
-            tempdf = df[df['level'] == level].copy()
-            tempdf.reset_index(drop=True, inplace=True)
-            print(tempdf)
-            ax.plot(tempdf.index, tempdf["value"], "-", label=data_type_name[i], alpha=.6)
-        plt.legend(fontsize=13)
-        plt.grid()
-        n += 1
-    plt.show()
-
-def scaling(scaler, df_list):
-    for i in df_list:
-        arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
-        arr = scaler.fit_transform(arr)
-        i.iloc[:, 1] = arr
-
+'''
+main 부분
+레벨별로 폴더에 접근해서 입력데이터로 바꿔주기
+'''
 for filename in os.listdir(path):
+    with open(path+filename) as f:
+        try:
+            lines = f.read()
+        except UnicodeDecodeError:
+            continue
 
-    heartR = pd.DataFrame(columns=['level', 'value'])
-    accelX = pd.DataFrame(columns=['level', 'value'])
-    accelY = pd.DataFrame(columns=['level', 'value'])
-    accelZ = pd.DataFrame(columns=['level', 'value'])
-    gyroX = pd.DataFrame(columns=['level', 'value'])
-    gyroY = pd.DataFrame(columns=['level', 'value'])
-    gyroZ = pd.DataFrame(columns=['level', 'value'])
-    stepC = pd.DataFrame(columns=['level', 'value'])
-
-    with open(path+filename,  encoding='utf-8') as f:
-        lines = f.read()
         filename = filename[:-4]
         print(f'[{complete_file_len}/{file_len}, {complete_file_len/file_len * 100:.2f}%]{filename}')
         # 라인별로 ', '(콤마 공백) 로 나누기
@@ -121,7 +87,11 @@ for filename in os.listdir(path):
         if len(arr[-1]) < 22:
             arr.pop(-1)
 
-    HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int), np.empty((0, 2), int)
+    if len(arr) < 300:
+        continue
+
+    # 비어있는 데이터프레임을 만들어준다.
+    HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int)
 
     # 데이터 프레임에 데이터 추가 // 시간대에 맞게 각각의 값을 넣어줍니다
     # 각각의 데이터를 태그를 보고 식별한 후 데이터가 알맞게 들어오면 각각의 데이터 프레임에 넣어줍니다.
@@ -137,23 +107,37 @@ for filename in os.listdir(path):
 
         # temp = ['1', 'AX', '1643912264855', '-3.6631858']
         # Type = AX, AY, AZ, GX, GY, GZ, HR ,SC
-
+        # temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
+        # print(temp)
         if temp[1] == 'HR':
-            heartR.loc[len(heartR)] = [int(temp[0]), float(temp[3])]
+            HR = np.append(HR, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AX':
-            accelX.loc[len(accelX)] = [int(temp[0]), float(temp[3])]
+            AX = np.append(AX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AY':
-            accelY.loc[len(accelY)] = [int(temp[0]), float(temp[3])]
+            AY = np.append(AY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AZ':
-            accelZ.loc[len(accelZ)] = [int(temp[0]), float(temp[3])]
+            AZ = np.append(AZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'GX':
-            gyroX.loc[len(gyroX)] = [int(temp[0]), float(temp[3])]
+            GX = np.append(GX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'GY':
-            gyroY.loc[len(gyroY)] = [int(temp[0]), float(temp[3])]
+            GY = np.append(GY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'GZ':
-            gyroZ.loc[len(gyroZ)] = [int(temp[0]), float(temp[3])]
+            GZ = np.append(GZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'SC':
-            stepC.loc[len(stepC)] = [int(temp[0]), float(temp[3])]
+            SC = np.append(SC, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+
+    print(HR.shape, AX.shape, AY.shape, AZ.shape, GX.shape, GY.shape, GZ.shape, SC.shape)
+
+    heartR = pd.DataFrame(HR, columns=['level', 'value'])
+    accelX = pd.DataFrame(AX, columns=['level', 'value'])
+    accelY = pd.DataFrame(AY, columns=['level', 'value'])
+    accelZ = pd.DataFrame(AZ, columns=['level', 'value'])
+    gyroX = pd.DataFrame(GX, columns=['level', 'value'])
+    gyroY = pd.DataFrame(GY, columns=['level', 'value'])
+    gyroZ = pd.DataFrame(GZ, columns=['level', 'value'])
+    stepC = pd.DataFrame(SC, columns=['level', 'value'])
+
+    # print(heartR.shape, accelX.shape, accelY.shape, accelZ.shape, gyroX.shape, gyroY.shape, gyroZ.shape, stepC.shape)
 
     # 레벨별 길이 구하기
     level_num = [i for i in range(1, 14)]
@@ -211,6 +195,8 @@ for filename in os.listdir(path):
     original_df.reset_index(drop=True, inplace=True)
     final_df.reset_index(drop=True, inplace=True)
     # print(final_df)
+    # print(accelX)
+    print("기존 데이터 길이, 리샘플링한 데이터 길이 비교")
     print(accelX.shape, final_df.shape)
 
 
@@ -228,11 +214,12 @@ for filename in os.listdir(path):
         save_data.reset_index(drop=True, inplace=True)
         save_data.drop(['level'], axis=1, inplace=True) # 레벨 column 삭제
         # 정제된 데이터를 레벨별로 각 폴더에 저장!!
-        save_data.to_csv(current_path+"/output/"+str(i)+"/"+filename+"_"+str(i)+".csv", header=False, index=False)
+        save_data.to_csv(save_path+str(i)+"/"+filename+"_"+str(i)+".csv", header=False, index=False)
         length += len(save_data)
 
     complete_file_len += 1
-    print('Total lenghth of data : ', length)
 
+print('Total length of data : ', length)
+print('Done!')
 
 
