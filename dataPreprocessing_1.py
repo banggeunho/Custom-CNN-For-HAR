@@ -3,16 +3,18 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from scipy import signal
+import matplotlib.pyplot as plt
 
 
-# 경로 안에 있는 모든 파일 읽어온다.
-# 여기 경로 수정해서 사용하세용~
-path = './download/'
+# 폴더 경로
+path = './backup/1월/'
+save_path = './january_output/'
 current_path = os.getcwd()
+os.makedirs(save_path, exist_ok = True)
 
-# 폴더를 만들어줍니다.
+# 레벨별로 output
 for i in range(1, 14):
-    os.makedirs(current_path + "/output/"+str(i), exist_ok = True)
+    os.makedirs(save_path+str(i), exist_ok = True)
 
 length = 0
 file_len = len(os.listdir(path))
@@ -33,16 +35,6 @@ def scaling(scaler, df_list):
         i.iloc[:, 1] = arr
 
 for filename in os.listdir(path):
-
-    heartR = pd.DataFrame(columns=['level', 'value'])
-    accelX = pd.DataFrame(columns=['level', 'value'])
-    accelY = pd.DataFrame(columns=['level', 'value'])
-    accelZ = pd.DataFrame(columns=['level', 'value'])
-    gyroX = pd.DataFrame(columns=['level', 'value'])
-    gyroY = pd.DataFrame(columns=['level', 'value'])
-    gyroZ = pd.DataFrame(columns=['level', 'value'])
-    stepC = pd.DataFrame(columns=['level', 'value'])
-
     with open(path+filename) as f:
         try:
             lines = f.read()
@@ -72,8 +64,12 @@ for filename in os.listdir(path):
         if len(arr[-1]) < 22:
             arr.pop(-1)
 
-    if len(arr) < 300:
+    if len(arr) < 100:
         continue
+
+    # print(arr)
+    # 비어있는 데이터프레임을 만들어준다.
+    HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int)
 
     # 데이터 프레임에 데이터 추가 // 시간대에 맞게 각각의 값을 넣어줍니다
     # 각각의 데이터를 태그를 보고 식별한 후 데이터가 알맞게 들어오면 각각의 데이터 프레임에 넣어줍니다.
@@ -86,30 +82,38 @@ for filename in os.listdir(path):
         # 측정된 값 부분이 숫자가 아니면
         if not is_number(temp[3]):
             continue
-
+        # print(temp)
         # temp = ['1', 'AX', '1643912264855', '-3.6631858']
         # Type = AX, AY, AZ, GX, GY, GZ, HR ,SC
         # temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
-
+        # print(temp)
         if temp[1] == 'heartR':
-            heartR.loc[len(heartR)] = [int(temp[0]), float(temp[3])]
+            HR = np.append(HR, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'accelX':
-            accelX.loc[len(accelX)] = [int(temp[0]), float(temp[3])]
+            AX = np.append(AX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'accelY':
-            accelY.loc[len(accelY)] = [int(temp[0]), float(temp[3])]
+            AY = np.append(AY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'accelZ':
-            accelZ.loc[len(accelZ)] = [int(temp[0]), float(temp[3])]
+            AZ = np.append(AZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'gyroX':
-            gyroX.loc[len(gyroX)] = [int(temp[0]), float(temp[3])]
+            GX = np.append(GX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'gyroY':
-            gyroY.loc[len(gyroY)] = [int(temp[0]), float(temp[3])]
+            GY = np.append(GY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'gyroZ':
-            gyroZ.loc[len(gyroZ)] = [int(temp[0]), float(temp[3])]
+            GZ = np.append(GZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'stepC':
-            stepC.loc[len(stepC)] = [int(temp[0]), float(temp[3])]
+            SC = np.append(SC, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
 
-    # print(heartR,"\n", accelX, "\n", accelY, "\n", accelZ, "\n", gyroX, "\n", gyroY, "\n", gyroZ, "\n", stepC)
+    heartR = pd.DataFrame(HR, columns=['level', 'value'])
+    accelX = pd.DataFrame(AX, columns=['level', 'value'])
+    accelY = pd.DataFrame(AY, columns=['level', 'value'])
+    accelZ = pd.DataFrame(AZ, columns=['level', 'value'])
+    gyroX = pd.DataFrame(GX, columns=['level', 'value'])
+    gyroY = pd.DataFrame(GY, columns=['level', 'value'])
+    gyroZ = pd.DataFrame(GZ, columns=['level', 'value'])
+    stepC = pd.DataFrame(SC, columns=['level', 'value'])
 
+    # print(heartR.shape, accelX.shape, accelY.shape, accelZ.shape, gyroX.shape, gyroY.shape, gyroZ.shape, stepC.shape)
 
     # 레벨별 길이 구하기
     level_num = [i for i in range(1, 14)]
@@ -119,8 +123,8 @@ for filename in os.listdir(path):
     # pd.set_option('display.max_row', 500)
 
     df_list = [accelX, accelY, accelZ, gyroX, gyroY, gyroZ]
-    level_df = [pd.DataFrame()]*14
-    re_level_df = [pd.DataFrame()]*14
+    level_df = [pd.DataFrame()] * 14
+    re_level_df = [pd.DataFrame()] * 14
     original_df = pd.DataFrame()
     final_df = pd.DataFrame()
     column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
@@ -156,21 +160,20 @@ for filename in os.listdir(path):
             arr = np.array(level_df[i][j]).reshape(-1, 1)
             arr = arr[np.logical_not(np.isnan(arr))]
             f = signal.resample(arr, min_column_cnt)
-            re_level_df[i] = pd.concat([re_level_df[i], pd.DataFrame(f)], axis = 1)
+            re_level_df[i] = pd.concat([re_level_df[i], pd.DataFrame(f)], axis=1)
 
         re_level_df[i].columns = column_names
         re_level_df[i]['level'] = [i for _ in range(len(re_level_df[i]))]
 
         original_df = pd.concat([original_df, level_df[i]], axis=0)
-        final_df = pd.concat([final_df, re_level_df[i]], axis=0) # 최종 리샘플링된 데이터
+        final_df = pd.concat([final_df, re_level_df[i]], axis=0)  # 최종 리샘플링된 데이터
 
     original_df.reset_index(drop=True, inplace=True)
     final_df.reset_index(drop=True, inplace=True)
     # print(final_df)
+    # print(accelX)
+    print("기존 데이터 길이, 리샘플링한 데이터 길이 비교")
     print(accelX.shape, final_df.shape)
-
-    # plot6Valeus(final_df, level_len, 2)
-    # plt.show()
 
     # # 리샘플링 잘 되었는지 확인
     # for idx, (i, j) in enumerate(zip(column_names, std_list)):
@@ -179,18 +182,21 @@ for filename in os.listdir(path):
     #     plt.show()
     # plt.clf()
 
-
     # 레벨별로 나누어서 csv 파일로 데이터 저장
-    for i in level_num: # 레벨별로 확인해서 쪼개겠습니다.
-        save_data = final_df[final_df['level'] == i].copy() #첫 기준 데이터를 accelX로 지정해준다.
+    for i in level_num:  # 레벨별로 확인해서 쪼개겠습니다.
+        save_data = final_df[final_df['level'] == i].copy()  # 첫 기준 데이터를 accelX로 지정해준다.
+        if len(save_data) <= 0:
+            continue
         save_data.reset_index(drop=True, inplace=True)
-        save_data.drop(['level'], axis=1, inplace=True) # 레벨 column 삭제
+        save_data.drop(['level'], axis=1, inplace=True)  # 레벨 column 삭제
         # 정제된 데이터를 레벨별로 각 폴더에 저장!!
-        save_data.to_csv(current_path+"/output/"+str(i)+"/"+filename+"_"+str(i)+".csv", header=False, index=False)
+        save_data.to_csv(save_path + str(i) + "/" + filename + "_" + str(i) + ".csv", header=False, index=False)
         length += len(save_data)
 
     complete_file_len += 1
-    print('Total lenghth of data : ', length)
+
+print('Total length of data : ', length)
+print('Done!')
 
 
 
