@@ -1,16 +1,17 @@
 import os
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy import signal
+from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt
 from glob import glob
 
 # 폴더 경로
 path = './download/'
-save_path = './input_data/'
+save_path = './february_filtered_output_ss/'
 current_path = os.getcwd()
-os.makedirs("./download_output/", exist_ok = True)
+os.makedirs(save_path, exist_ok = True)
 
 # 레벨별로 output
 for i in range(1, 14):
@@ -32,11 +33,13 @@ def is_number(num):
     except ValueError:  # num을 float으로 변환할 수 없는 경우
         return False
 
-def scaling(scaler, df_list):
-    for i in df_list:
-        arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
+def scaling(df, scaler, columns):
+    for column in columns:
+        arr = np.array(df[column]).reshape(-1, 1)
         arr = scaler.fit_transform(arr)
-        i.iloc[:, 1] = arr
+        df[column] = arr
+
+    return df
 
 def plot6Valeus(df, seq, column_names):
     data_type_name = ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ']
@@ -51,6 +54,32 @@ def plot6Valeus(df, seq, column_names):
         n += 1
     plt.tight_layout()  # 창 크기에 맞게 조정
 
+def BPF(series, low, high, order = 1):
+
+    b, a = butter(
+        N = order,
+        Wn = [low, high],
+        btype='band',
+    )
+
+    return lfilter(b, a, series)
+
+
+class PassFilter:
+    def __init__(self, cutoff_freq, ts, init_value):
+        self.ts = ts
+        self.cutoff_freq = cutoff_freq
+        self.pre_out = init_value
+        self.tau = self.calc_filter_coef()
+
+    def calc_filter_coef(self):
+        w_cut = 2 * np.pi * self.cutoff_freq
+        return 1 / w_cut
+
+    def filter(self, data):
+        out = (self.tau * self.pre_out + self.ts * data) / (self.tau + self.ts)
+        self.pre_out = out
+        return out
 
 
 '''
@@ -91,12 +120,14 @@ for filename in os.listdir(path):
         continue
 
     # 비어있는 데이터프레임을 만들어준다.
-    HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int)
+    HR, AX, AY, AZ, GX, GY, GZ, SC = np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int),\
+                                     np.empty((0,2), int), np.empty((0,2), int), np.empty((0,2), int),\
+                                     np.empty((0,2), int), np.empty((0,2), int)
 
     # 데이터 프레임에 데이터 추가 // 시간대에 맞게 각각의 값을 넣어줍니다
     # 각각의 데이터를 태그를 보고 식별한 후 데이터가 알맞게 들어오면 각각의 데이터 프레임에 넣어줍니다.
-    for l in arr:
-        temp = l.split('+')
+    for l in range(150, len(arr)):
+        temp = arr[l].split('+')
 
         # 레벨 부분이 숫자가 아니면
         if not is_number(temp[0]):
@@ -110,23 +141,23 @@ for filename in os.listdir(path):
         # temp[2] = datetime.fromtimestamp(float(temp[2])/1000)
         # print(temp)
         if temp[1] == 'HR':
-            HR = np.append(HR, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            HR = np.append(HR, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AX':
-            AX = np.append(AX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            AX = np.append(AX, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AY':
-            AY = np.append(AY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            AY = np.append(AY, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'AZ':
-            AZ = np.append(AZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            AZ = np.append(AZ, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'GX':
-            GX = np.append(GX, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            GX = np.append(GX, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
         elif temp[1] == 'GY':
-            GY = np.append(GY, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            GY = np.append(GY, np.array([[float(temp[0]),float(temp[3])]]), axis = 0)
         elif temp[1] == 'GZ':
-            GZ = np.append(GZ, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            GZ = np.append(GZ, np.array([[float(temp[0]),float(temp[3])]]), axis = 0)
         elif temp[1] == 'SC':
-            SC = np.append(SC, np.array([[int(temp[0]), float(temp[3])]]), axis = 0)
+            SC = np.append(SC, np.array([[float(temp[0]), float(temp[3])]]), axis = 0)
 
-    print(HR.shape, AX.shape, AY.shape, AZ.shape, GX.shape, GY.shape, GZ.shape, SC.shape)
+    # print(HR.shape, AX.shape, AY.shape, AZ.shape, GX.shape, GY.shape, GZ.shape, SC.shape)
 
     heartR = pd.DataFrame(HR, columns=['level', 'value'])
     accelX = pd.DataFrame(AX, columns=['level', 'value'])
@@ -153,16 +184,91 @@ for filename in os.listdir(path):
     final_df = pd.DataFrame()
     column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
 
-    # Copy the original data and data removed outlier to new dataframe for scaling
-    std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
-    std_list = [std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ]
+    from scipy.signal import butter, lfilter, filtfilt
 
-    # Standard Scaling
-    scaling(StandardScaler(), std_list)
+    def butter_lowpass(cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        return b, a
+
+    def butter_lowpass_filter(data, cutoff, fs, order=5):
+        b, a = butter_lowpass(cutoff, fs, order=order)
+        y = filtfilt(b, a, data)
+        return y
+
+    def butter_bandpass(lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return b, a
+
+    def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+        b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+        y = filtfilt(b, a, data)
+        return y
+
+    filtered_accelX = pd.DataFrame(columns=['level', 'value'])
+    filtered_accelY = pd.DataFrame(columns=['level', 'value'])
+    filtered_accelZ = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroX = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroY = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroZ = pd.DataFrame(columns=['level', 'value'])
+
+    filtered_df = [filtered_accelX, filtered_accelY, filtered_accelZ, filtered_gyroX, filtered_gyroY, filtered_gyroZ]
+
+    for idx, data in enumerate(df_list):
+        # setting
+        order = 6
+        fs = 50.
+        cutoff = 3.
+        low_cutoff = 2.
+        high_cutoff = 10.
+
+        # fig = plt.figure()
+        # fig.tight_layout()
+        # fig.suptitle(column_names[idx])
+        # k = 1
+
+        for i in level_num:
+            temp = data[data['level'] == i].copy()[200:-200]
+            if len(temp) <= 50:
+                continue
+            # temp.reset_index(drop=True, inplace=True)
+
+            # lpf = PassFilter(cutoff_freq=0.1, ts=0.02, init_value=temp['value'][0])
+            # filtered_data = [lpf.filter(data) for data in temp['value']]
+            # lpf2 = butter_lowpass_filter(temp['value'], cutoff, fs, order)
+
+            bpf = butter_bandpass_filter(temp['value'], low_cutoff, high_cutoff, fs, order)
+            temp['value'] = bpf
+            t = np.arange(0, len(temp))
+            filtered_df[idx] = pd.concat([filtered_df[idx], temp], axis=0)
+
+            # ##### plot 하는부분  #######
+            # plt.title
+            # ax = fig.add_subplot(2, 2, k)
+            # ax.plot(t, temp['value'])
+            # ax.plot(t, bpf, 'r')
+            # ax.set_title(f'level = {i}')
+            # k+=1
+            #
+            # if i % 4 == 0:
+            #     k = 1
+            #     plt.show()
+            #     fig = plt.figure()
+            #     fig.tight_layout()
+            #     fig.suptitle(column_names[idx])
+        #
+        # plt.tight_layout()
+        # plt.show()
+
+        filtered_df[idx].reset_index(drop = True, inplace = True)
 
     # 레벨별로 데이터 나누기
     for i in level_num:
-        for j in std_list:
+        for j in filtered_df:
             temp_data = j[j['level'] == i]['value'].copy()
             temp_data.reset_index(drop=True, inplace=True)
             level_df[i] = pd.concat([level_df[i], temp_data], axis=1)
@@ -182,7 +288,9 @@ for filename in os.listdir(path):
 
         for j in column_names:
             arr = np.array(level_df[i][j]).reshape(-1, 1)
-            arr = arr[np.logical_not(np.isnan(arr))]
+
+            arr = arr[np.logical_not(pd.isnull(arr))]
+            # print(arr)
             f = signal.resample(arr, min_column_cnt)
             re_level_df[i] = pd.concat([re_level_df[i], pd.DataFrame(f)], axis = 1)
 
@@ -199,9 +307,11 @@ for filename in os.listdir(path):
     print("기존 데이터 길이, 리샘플링한 데이터 길이 비교")
     print(accelX.shape, final_df.shape)
 
+    # Standard Scaling
+    final_df = scaling(final_df, StandardScaler(), column_names)
 
     # # 리샘플링 잘 되었는지 확인
-    # for idx, (i, j) in enumerate(zip(column_names, std_list)):
+    # for idx, (i, j) in enumerate(zip(column_names, df_list)):
     #     plt.plot(j.index, j['value'], 'g-', final_df[i].index, final_df[i], 'b-')
     #     plt.legend(['data', 'resampled'], loc='best')
     #     plt.show()
@@ -211,6 +321,8 @@ for filename in os.listdir(path):
     # 레벨별로 나누어서 csv 파일로 데이터 저장
     for i in level_num: # 레벨별로 확인해서 쪼개겠습니다.
         save_data = final_df[final_df['level'] == i].copy() #첫 기준 데이터를 accelX로 지정해준다.
+        if len(save_data) == 0:
+            continue
         save_data.reset_index(drop=True, inplace=True)
         save_data.drop(['level'], axis=1, inplace=True) # 레벨 column 삭제
         # 정제된 데이터를 레벨별로 각 폴더에 저장!!
@@ -220,6 +332,9 @@ for filename in os.listdir(path):
     complete_file_len += 1
 
 print('Total length of data : ', length)
+
+from train_test_split import train_val_test_split
+train_val_test_split(save_path)
 print('Done!')
 
 

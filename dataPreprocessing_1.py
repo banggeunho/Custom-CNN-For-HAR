@@ -1,14 +1,14 @@
 import os
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy import signal
 import matplotlib.pyplot as plt
 
 
 # 폴더 경로
 path = './backup/1월/'
-save_path = './january_output/'
+save_path = './january_filtered_output_ss/'
 current_path = os.getcwd()
 os.makedirs(save_path, exist_ok = True)
 
@@ -28,11 +28,13 @@ def is_number(num):
     except ValueError:  # num을 float으로 변환할 수 없는 경우
         return False
 
-def scaling(scaler, df_list):
-    for i in df_list:
-        arr = np.array(i.iloc[:, 1]).reshape(-1, 1)
+def scaling(df, scaler, columns):
+    for column in columns:
+        arr = np.array(df[column]).reshape(-1, 1)
         arr = scaler.fit_transform(arr)
-        i.iloc[:, 1] = arr
+        df[column] = arr
+
+    return df
 
 for filename in os.listdir(path):
     with open(path+filename) as f:
@@ -129,16 +131,95 @@ for filename in os.listdir(path):
     final_df = pd.DataFrame()
     column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
 
-    # Copy the original data and data removed outlier to new dataframe for scaling
-    std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
-    std_list = [std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ]
+    # # Copy the original data and data removed outlier to new dataframe for scaling
+    # std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ = accelX.copy(), accelY.copy(), accelZ.copy(), gyroX.copy(), gyroY.copy(), gyroZ.copy()
+    # std_list = [std_accelX, std_accelY, std_accelZ, std_gyroX, std_gyroY, std_gyroZ]
 
-    # Standard Scaling
-    scaling(StandardScaler(), std_list)
+    from scipy.signal import butter, lfilter, filtfilt
+
+    def butter_lowpass(cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        return b, a
+
+    def butter_lowpass_filter(data, cutoff, fs, order=5):
+        b, a = butter_lowpass(cutoff, fs, order=order)
+        y = filtfilt(b, a, data)
+        return y
+
+    def butter_bandpass(lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return b, a
+
+    def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+        b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+        y = filtfilt(b, a, data)
+        return y
+
+    filtered_accelX = pd.DataFrame(columns=['level', 'value'])
+    filtered_accelY = pd.DataFrame(columns=['level', 'value'])
+    filtered_accelZ = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroX = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroY = pd.DataFrame(columns=['level', 'value'])
+    filtered_gyroZ = pd.DataFrame(columns=['level', 'value'])
+
+    filtered_df = [filtered_accelX, filtered_accelY, filtered_accelZ, filtered_gyroX, filtered_gyroY, filtered_gyroZ]
+
+    for idx, data in enumerate(df_list):
+        # setting
+        order = 6
+        fs = 50.
+        cutoff = 3.
+        low_cutoff = 2.
+        high_cutoff = 10.
+
+        # fig = plt.figure()
+        # fig.tight_layout()
+        # fig.suptitle(column_names[idx])
+        # k = 1
+
+        for i in level_num:
+            temp = data[data['level'] == i].copy()[200:-200]
+            if len(temp) <= 50:
+                continue
+            # temp.reset_index(drop=True, inplace=True)
+
+            # lpf = PassFilter(cutoff_freq=0.1, ts=0.02, init_value=temp['value'][0])
+            # filtered_data = [lpf.filter(data) for data in temp['value']]
+            # lpf2 = butter_lowpass_filter(temp['value'], cutoff, fs, order)
+
+            bpf = butter_bandpass_filter(temp['value'], low_cutoff, high_cutoff, fs, order)
+            temp['value'] = bpf
+            t = np.arange(0, len(temp))
+            filtered_df[idx] = pd.concat([filtered_df[idx], temp], axis=0)
+
+            # ##### plot 하는부분  #######
+            # plt.title
+            # ax = fig.add_subplot(2, 2, k)
+            # ax.plot(t, temp['value'])
+            # ax.plot(t, bpf, 'r')
+            # ax.set_title(f'level = {i}')
+            # k+=1
+            #
+            # if i % 4 == 0:
+            #     k = 1
+            #     plt.show()
+            #     fig = plt.figure()
+            #     fig.tight_layout()
+            #     fig.suptitle(column_names[idx])
+        #
+        # plt.tight_layout()
+        # plt.show()
+
+        filtered_df[idx].reset_index(drop = True, inplace = True)
 
     # 레벨별로 데이터 나누기
     for i in level_num:
-        for j in std_list:
+        for j in df_list:
             temp_data = j[j['level'] == i]['value'].copy()
             temp_data.reset_index(drop=True, inplace=True)
             level_df[i] = pd.concat([level_df[i], temp_data], axis=1)
@@ -172,8 +253,15 @@ for filename in os.listdir(path):
     final_df.reset_index(drop=True, inplace=True)
     # print(final_df)
     # print(accelX)
-    print("기존 데이터 길이, 리샘플링한 데이터 길이 비교")
-    print(accelX.shape, final_df.shape)
+    # print("기존 데이터 길이, 리샘플링한 데이터 길이 비교")
+    # print(accelX.shape, final_df.shape)
+    # print(final_df.describe())
+
+    # Standard Scaling
+    final_df = scaling(final_df, StandardScaler(), column_names)
+    # print(final_df.shape)
+    # print(final_df.describe())
+
 
     # # 리샘플링 잘 되었는지 확인
     # for idx, (i, j) in enumerate(zip(column_names, std_list)):
@@ -196,6 +284,10 @@ for filename in os.listdir(path):
     complete_file_len += 1
 
 print('Total length of data : ', length)
+
+from train_test_split import train_val_test_split
+train_val_test_split(save_path)
+
 print('Done!')
 
 
