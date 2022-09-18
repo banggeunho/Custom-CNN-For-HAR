@@ -39,6 +39,11 @@ from tqdm.auto import tqdm
 main 부분
 레벨별로 폴더에 접근해서 입력데이터로 바꿔주기
 '''
+import math
+def SVM_algorithm(x, y, z):
+    result = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
+    return result
+
 for idx in tqdm(range(1, 14)):
     for filename in os.listdir(src_path+str(idx)+'/'):
         data = pd.read_csv(src_path+str(idx)+'/'+filename)
@@ -59,9 +64,19 @@ for idx in tqdm(range(1, 14)):
         new.reset_index(drop=True, inplace=True)
 
         # # final_df의 데이터를 레벨별로 각 폴더에 저장!!
+        ttt = []
+        for a, b, c in zip(new.iloc[:, 1], new.iloc[:, 2], new.iloc[:, 3]):
+            ttt.append(SVM_algorithm(a, b, c))
+        new['svm'] = ttt
+        # print(math.pow(new.iloc[:, 1], 2))
+        # new['svm'] = new.iloc[:, 1], new.iloc[:, 2], new.iloc[:, 3])
+
+        print(new)
+        input()
         new.to_csv(save_path+str(idx)+"/"+filename+"_"+str(idx)+".csv", index=False)
         length += len(new)
         complete_file_len += 1
+
 
         # with open(src_path+str(idx)+'/'+filename) as f:
         #     try:
