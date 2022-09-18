@@ -5,7 +5,7 @@ import pandas as pd
 from glob import glob
 
 # 폴더 경로
-path = './time_data/'
+path = './tt_data/'
 path_arr = glob(path+"**", recursive=True)
 os.makedirs("./start_end_time/", exist_ok = True)
 

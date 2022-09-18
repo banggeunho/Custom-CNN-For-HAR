@@ -278,7 +278,7 @@ def february_preprocessing(path, save_path):
         result_df['A_SVM'] = accel_svm
         result_df['G_SVM'] = gyro_svm
         result_df['F_A_SVM'] = f_accel_svm
-        result_df['F_B_SVM'] = f_gyro_svm
+        result_df['F_G_SVM'] = f_gyro_svm
 
         # Standard Scaling
         column_names = ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ', 'F_AX', 'F_AY', 'F_AZ', 'F_GX', 'F_GY', 'F_GZ', 'A_SVM', 'G_SVM']
