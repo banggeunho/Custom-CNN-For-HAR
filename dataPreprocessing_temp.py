@@ -8,8 +8,8 @@ from glob import glob
 
 # 폴더 경로
 
-src_path = './0223_ver3/raw_and_2.5_20/'
-save_path = './0223_ver3/result_2.5_20/'
+src_path = './0223_ver3/raw_and_2.5_15/'
+save_path = './0223_ver3/result_2.5_15/'
 current_path = os.getcwd()
 os.makedirs(save_path, exist_ok = True)
 
@@ -44,38 +44,77 @@ def SVM_algorithm(x, y, z):
     result = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
     return result
 
+result = pd.DataFrame()
 for idx in tqdm(range(1, 14)):
     for filename in os.listdir(src_path+str(idx)+'/'):
         data = pd.read_csv(src_path+str(idx)+'/'+filename)
         temp_cc = list(data.columns[1:])
+        # print(temp_cc)
         # print(src_path+str(idx)+'/'+filename)
 
         for (idxx, c) in enumerate(temp_cc):
             # print(idx, c)
             if not is_number(c):
                 temp_cc[idxx] = temp_cc[idxx][:-3]
-                # print(temp_cc[idx])
+
+        # print(temp_cc)
 
         temp = pd.DataFrame(temp_cc).transpose().astype(float)
-        tmp = pd.DataFrame(data.iloc[:, 1:].values).astype(float)
+        # print(temp)
+        tmp = pd.DataFrame(data.iloc[:, 1:].values)
 
-        # data = data.iloc[:, 1:]
         new = pd.concat([temp, tmp], axis = 0).transpose()
-        new.reset_index(drop=True, inplace=True)
+        raw = pd.DataFrame(new.iloc[:, :6].values)
+        raw.reset_index(drop=True, inplace=True)
+        std = pd.DataFrame(new.iloc[:, 6:12].values)
+        std.reset_index(drop=True, inplace=True)
+        fil = pd.DataFrame(new.iloc[:, 12:].values)
+        fil.reset_index(drop=True, inplace=True)
+
+        # kimchitong = pd.DataFrame()
+        if idx == 6 or idx == 7:
+            fil.to_csv(save_path+str(idx)+"/"+filename+"_f_"+str(idx)+".csv", index=False)
+
+        elif idx == 5 or idx == 8:
+            raw.to_csv(save_path+str(idx)+"/"+filename+"_r_"+str(idx)+".csv", index=False)
+            fil.to_csv(save_path + str(idx) + "/" + filename + "_f_" + str(idx) + ".csv", index=False)
+
+        else:
+            raw.to_csv(save_path + str(idx) + "/" + filename + "_r_" + str(idx) + ".csv", index=False)
+            std.to_csv(save_path + str(idx) + "/" + filename + "_s_" + str(idx) + ".csv", index=False)
+            fil.to_csv(save_path + str(idx) + "/" + filename + "_f_" + str(idx) + ".csv", index=False)
+
+        # kimchitong.reset_index(drop=True, inplace=True)
+        # level = pd.DataFrame(np.array([idx] * len(kimchitong)), columns=['level'])
+        #
+        # kimchitong = pd.concat([kimchitong, level], axis=1)
+        # kimchitong.reset_index(drop=True, inplace=True)
 
         # # final_df의 데이터를 레벨별로 각 폴더에 저장!!
-        ttt = []
-        for a, b, c in zip(new.iloc[:, 1], new.iloc[:, 2], new.iloc[:, 3]):
-            ttt.append(SVM_algorithm(a, b, c))
-        new['svm'] = ttt
+        # ttt = []
+        # for a, b, c in zip(new.iloc[:, 1], new.iloc[:, 2], new.iloc[:, 3]):
+        #     ttt.append(SVM_algorithm(a, b, c))
+        # new['svm'] = ttt
         # print(math.pow(new.iloc[:, 1], 2))
         # new['svm'] = new.iloc[:, 1], new.iloc[:, 2], new.iloc[:, 3])
 
-        print(new)
-        input()
-        new.to_csv(save_path+str(idx)+"/"+filename+"_"+str(idx)+".csv", index=False)
-        length += len(new)
-        complete_file_len += 1
+        # print(new)
+        # input()
+        # kimchitong.iloc[:,:-1].to_csv(save_path+str(idx)+"/"+filename+"_"+str(idx)+".csv", index=False)
+
+        # print(new.shape)
+        # result = pd.concat([result, kimchitong], axis = 0)
+        # result.reset_index(drop=True, inplace=True)
+        # print(result)
+        # input()
+        # length += len(kimchitong)
+        # complete_file_len += 1
+
+# print(result.groupby(result['level']).size())
+# print('Total length of data : ', length)
+from train_test_split import train_val_test_split
+train_val_test_split(save_path, 13, train_rate=0.7, val_rate=0.5)
+print('Done!')
 
 
         # with open(src_path+str(idx)+'/'+filename) as f:
@@ -105,10 +144,7 @@ for idx in tqdm(range(1, 14)):
         # # plt.show()
         #
 
-print('Total length of data : ', length)
-from train_test_split import train_val_test_split
-train_val_test_split(save_path, 13, train_rate=0.7, val_rate=0.5)
-print('Done!')
+
 
 # data = pd.read_csv("./temp_output/result.csv",)
 # print(data)
